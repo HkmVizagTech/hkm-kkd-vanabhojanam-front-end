@@ -39,13 +39,13 @@ export default function ThankYouPage() {
     
     try {
       console.log(`🔍 Checking payment status for ID: ${id}...`);
-      const res = await axios.get(`https://hkm-vanabhojan-backend-882278565284.europe-west1.run.app/users/verify-payment/${id}`);
+      const res = await axios.get(`https://hkm-kkd-vanabhojanam-backend-882278565284.europe-west1.run.app/users/verify-payment/${id}`);
       
       if (res.data.success && res.data.candidate) {
-        console.log("✅ Payment verification successful:", res.data.candidate);
+        console.log("  Payment verification successful:", res.data.candidate);
         setCandidate(res.data.candidate);
         
-        // Check if payment is confirmed
+        
         if (res.data.candidate.paymentStatus === 'Paid') {
           setStatus('success');
           return 'success';
@@ -58,7 +58,7 @@ export default function ThankYouPage() {
         return 'invalid';
       }
     } catch (err) {
-      console.error("❌ Payment verification error:", err);
+      console.error(" Payment verification error:", err);
       setStatus('error');
       return 'error';
     }
@@ -66,7 +66,7 @@ export default function ThankYouPage() {
 
   useEffect(() => {
     let attempts = 0;
-    const maxAttempts = 10; // 30 seconds (10 attempts * 3 seconds) - auto-checker runs every 10 seconds
+    const maxAttempts = 10; 
     let pollInterval;
 
     const verifyPaymentWithPolling = async () => {
@@ -85,14 +85,14 @@ export default function ThankYouPage() {
     };
 
     if (id) {
-      // First check immediately
+     
       verifyPaymentWithPolling();
       
-      // Then poll every 3 seconds for up to 30 seconds
+      
       pollInterval = setInterval(verifyPaymentWithPolling, 3000);
     }
 
-    // Cleanup interval on unmount
+    
     return () => {
       if (pollInterval) clearInterval(pollInterval);
     };

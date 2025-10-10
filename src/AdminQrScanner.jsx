@@ -81,7 +81,7 @@ const AdminQrScanner = () => {
                 const token = localStorage.getItem("token");
                 
                 const res = await fetch(
-                  "https://hkm-vanabhojan-backend-882278565284.europe-west1.run.app/users/admin/attendance-scan",
+                  "https://hkm-kkd-vanabhojanam-backend-882278565284.europe-west1.run.app/users/admin/attendance-scan",
                   {
                     method: "POST",
                     headers: {
@@ -98,9 +98,9 @@ const AdminQrScanner = () => {
                 setStatus(response.status);
                 setMessage(response.message);
               } catch (e) {
-                console.error("❌ Error scanning QR:", e.response?.data || e.message);
+                console.error(" Error scanning QR:", e.response?.data || e.message);
                 
-                // Handle authentication errors
+               
                 if (e.response?.status === 401 || e.response?.status === 403) {
                   localStorage.removeItem("token");
                   localStorage.removeItem("role");

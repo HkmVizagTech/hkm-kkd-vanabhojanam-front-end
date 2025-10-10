@@ -53,7 +53,7 @@ const CandidateExport = () => {
       
       setLoading(true);
       try {
-        const response = await fetch("https://hkm-vanabhojan-backend-882278565284.europe-west1.run.app/users", {
+        const response = await fetch("https://hkm-kkd-vanabhojanam-backend-882278565284.europe-west1.run.app/users", {
           method: "GET",
           headers: {
             "Authorization": `Bearer ${token}`,
