@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_URL } from '../config/env';
 import {
   Box,
   Button,
@@ -8,8 +9,6 @@ import {
   Checkbox,
   Container,
   Flex,
-  Grid,
-  GridItem,
   Heading,
   Text,
   VStack,
@@ -32,11 +31,6 @@ import {
   Stack,
   useColorModeValue,
   Select,
-  NumberInput,
-  NumberInputField,
-  NumberInputStepper,
-  NumberIncrementStepper,
-  NumberDecrementStepper,
   Input,
   InputGroup,
   InputLeftElement,
@@ -82,8 +76,9 @@ const SendCertificate = () => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
-  // API Base URL
-  const API_BASE_URL = 'https://hkm-kkd-vanabhojanam-backend-882278565284.europe-west1.run.app/users';
+  
+    
+  const API_BASE_URL = `${API_URL}/users`;
 
 
   const safeToLowerCase = (value) => {
@@ -103,11 +98,11 @@ const SendCertificate = () => {
 
   useEffect(() => {
     applyFilters();
-  }, [allCandidates, searchTerm, statusFilter, collegeFilter]);
+  }, [allCandidates, searchTerm, statusFilter, collegeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     updateDisplayedCandidates();
-  }, [filteredCandidates, currentPage, itemsPerPage]);
+  }, [filteredCandidates, currentPage, itemsPerPage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchEligibleCandidates = async () => {
     try {

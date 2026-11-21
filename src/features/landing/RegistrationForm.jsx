@@ -1,0 +1,323 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Card,
+  CardBody,
+  Flex,
+  FormHelperText,
+  Heading,
+  HStack,
+  Image,
+  Input,
+  InputGroup,
+  InputLeftAddon,
+  Radio,
+  RadioGroup,
+  Select as ChakraSelect,
+  Stack,
+  Text,
+  useColorModeValue,
+} from '@chakra-ui/react';
+import CreatableSelect from 'react-select/creatable';
+import { COLLEGE_YEARS } from '../../config/event';
+import { useCurrentEvent } from '../../context/CurrentEventContext';
+import { registrationApi } from '../../services/registration';
+import { preloadRazorpay } from '../../hooks/useRazorpay';
+import Figure from '../../components/three/Figure';
+import { formatINR } from '../../utils/format';
+import FormField from '../../components/common/FormField';
+import { buildPayload, feeFor } from './validation';
+import { useRegistrationForm } from './useRegistrationForm';
+import { usePayment } from './usePayment';
+
+const collegeSelectStyles = dark => ({
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: state.isFocused ? '#2f8a57' : '#c9e6d2',
+    background: dark ? '#2d3748' : '#fff',
+    boxShadow: 'none',
+    '&:hover': { borderColor: '#20603d' },
+  }),
+  singleValue: base => ({ ...base, color: dark ? '#fff' : '#1a202c' }),
+  input: base => ({ ...base, color: dark ? '#fff' : '#1a202c' }),
+  menu: base => ({ ...base, zIndex: 20, background: dark ? '#2d3748' : '#fff' }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected ? '#20603d' : state.isFocused ? (dark ? '#2f8a57' : '#e1f7e3') : 'transparent',
+    color: state.isSelected || (dark && state.isFocused) ? '#fff' : dark ? '#e2e8f0' : '#20603d',
+  }),
+});
+
+function FeeBanner({ event, category }) {
+  const fee = feeFor(event, category);
+  const info = event.fees[category];
+  return (
+    <Flex
+      align="center"
+      justify="space-between"
+      gap={3}
+      px={4}
+      py={3}
+      borderRadius="xl"
+      borderWidth="1px"
+      borderColor="saffron.200"
+      bg="saffron.50"
+      color="brand.800"
+      _dark={{ bg: 'whiteAlpha.100', color: 'white', borderColor: 'whiteAlpha.200' }}
+      aria-live="polite"
+    >
+      <Box>
+        <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="wider">
+          Registration fee
+        </Text>
+        <Text fontSize="sm">{info ? info.label : 'Choose student or working below'}</Text>
+      </Box>
+      <Text fontFamily="heading" fontSize={{ base: "2xl", md: "3xl" }} fontWeight="bold" lineHeight="1" whiteSpace="nowrap">
+        {fee ? formatINR(fee) : `${formatINR(event.fees.College.amount)} / ${formatINR(event.fees.Working.amount)}`}
+      </Text>
+    </Flex>
+  );
+}
+
+export default function RegistrationForm() {
+  const { event } = useCurrentEvent();
+  const { values, errors, setField, idCard, pickIdCard, clearIdCard, validate } = useRegistrationForm();
+  const { pay, isPaying } = usePayment();
+  const [colleges, setColleges] = useState([]);
+  const dark = useColorModeValue(false, true);
+  const selectStyles = useMemo(() => collegeSelectStyles(dark), [dark]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    registrationApi
+      .getColleges(controller.signal)
+      .then(list => setColleges(list.map(c => ({ label: c.name, value: c.name }))))
+      .catch(err => {
+        if (!controller.signal.aborted) console.error('Failed to fetch colleges:', err);
+      });
+    return () => controller.abort();
+  }, []);
+
+  const isCollege = values.collegeOrWorking === 'College';
+  const isWorking = values.collegeOrWorking === 'Working';
+  const today = new Date().toISOString().split('T')[0];
+
+  const text = name => ({
+    value: values[name],
+    onChange: e => setField(name, e.target.value),
+  });
+
+  const submit = e => {
+    e.preventDefault();
+    if (!validate()) return;
+    pay({ payload: buildPayload(values), studentIdCard: isCollege ? idCard.file : null });
+  };
+
+  const cta = isCollege
+    ? `Register Now for ${formatINR(feeFor(event, 'College'))} (Student)`
+    : isWorking
+      ? `Register Now for ${formatINR(feeFor(event, 'Working'))} (Professional)`
+      : 'Register Now';
+
+  return (
+    <Card id="register" boxShadow="lift" scrollMarginTop="24px" overflow="hidden">
+      <Flex
+        align="center"
+        justify="space-between"
+        gap={2}
+        pl={{ base: 5, md: 8 }}
+        pr={{ base: 1, md: 4 }}
+        py={{ base: 3, md: 4 }}
+        color="white"
+        bg="#0a1511"
+        bgImage="radial-gradient(ellipse 60% 120% at 88% 50%, rgba(201,162,74,0.28), transparent 70%)"
+        borderBottomWidth="2px"
+        borderColor="saffron.400"
+      >
+        <Box>
+          <Text fontSize="xs" fontWeight="bold" textTransform="uppercase" letterSpacing="widest" color="saffron.300">
+            Your entry pass
+          </Text>
+          <Heading as="h3" size="lg" mt={1} color="white" lineHeight="1.1">
+            {event.name} Registration
+          </Heading>
+          <Text mt={2} fontSize="sm" color="whiteAlpha.800" maxW="260px">
+            Pay once and your QR pass arrives on WhatsApp.
+          </Text>
+        </Box>
+        <Figure name="pass" label="3D illustration of a QR entry pass" h={{ base: '130px', md: '170px' }} w={{ base: '120px', md: '160px' }} flexShrink={0} />
+      </Flex>
+      <CardBody pt={5}>
+        <Text color="text.muted" fontSize="xs" mb={4}>
+          <Text as="span" color="red.500">*</Text> indicates required
+        </Text>
+        <form onSubmit={submit} noValidate>
+          <Stack spacing={5}>
+            <FeeBanner event={event} category={values.collegeOrWorking} />
+
+            <FormField id="name" label="Name" required error={errors.name}>
+              <Input placeholder="Your full name" autoComplete="name" {...text('name')} />
+            </FormField>
+
+            <FormField
+              id="dob"
+              label="Date of Birth"
+              required
+              error={errors.dob}
+            >
+              <Input type="date" max={today} {...text('dob')} />
+            </FormField>
+
+            <FormField id="whatsappNumber" label="WhatsApp Number" required error={errors.whatsappNumber}>
+              <InputGroup>
+                <InputLeftAddon>+91</InputLeftAddon>
+                <Input
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder="Your WhatsApp number"
+                  {...text('whatsappNumber')}
+                />
+              </InputGroup>
+            </FormField>
+
+            <FormField id="email" label="Email" required error={errors.email}>
+              <Input type="email" autoComplete="email" placeholder="your.email@example.com" {...text('email')} />
+            </FormField>
+
+            <FormField id="area" label="Area" required error={errors.area}>
+              <Input placeholder="Where you live, e.g. MVP Colony, Gajuwaka" autoComplete="address-level3" {...text('area')} />
+            </FormField>
+
+            <FormField id="gender" label="Gender" required error={errors.gender}>
+              <RadioGroup value={values.gender} onChange={v => setField('gender', v)}>
+                <HStack spacing={6}>
+                  <Radio value="Male" colorScheme="brand">Male</Radio>
+                  <Radio value="Female" colorScheme="brand">Female</Radio>
+                </HStack>
+              </RadioGroup>
+            </FormField>
+
+            <FormField id="collegeOrWorking" label="Are you a Student or Working?" required error={errors.collegeOrWorking}>
+              <ChakraSelect {...text('collegeOrWorking')}>
+                <option value="">--Select--</option>
+                <option value="College">Student</option>
+                <option value="Working">Working</option>
+              </ChakraSelect>
+              {isCollege && (
+                <Alert status="success" mt={2} borderRadius="md" fontSize="sm">
+                  <AlertIcon />
+                  Please carry your student ID card to the event for verification. Student rate:{' '}
+                  <b>&nbsp;{formatINR(feeFor(event, 'College'))}</b>
+                </Alert>
+              )}
+              {isWorking && (
+                <Alert status="warning" mt={2} borderRadius="md" fontSize="sm">
+                  <AlertIcon />
+                  Registration fee for working professionals: <b>&nbsp;{formatINR(feeFor(event, 'Working'))}</b>
+                </Alert>
+              )}
+            </FormField>
+
+            {isWorking && (
+              <FormField id="companyName" label="Company Name" required error={errors.companyName}>
+                <Input placeholder="Your company name" autoComplete="organization" {...text('companyName')} />
+              </FormField>
+            )}
+
+            {isCollege && (
+              <>
+                <FormField id="college" label="College Name" required error={errors.college}>
+                  {/* Pick from the list, or type any name: it is used exactly as typed. */}
+                  <CreatableSelect
+                    inputId="college"
+                    options={colleges}
+                    value={values.college ? { label: values.college, value: values.college } : null}
+                    onChange={option => setField('college', option?.value || '')}
+                    placeholder="Select your college, or type its name"
+                    formatCreateLabel={typed => `Use "${typed}"`}
+                    isValidNewOption={typed => typed.trim().length > 1}
+                    noOptionsMessage={() => 'Type your college name'}
+                    isClearable
+                    styles={selectStyles}
+                  />
+                  <FormHelperText>Not in the list? Just type your college name and choose "Use ...".</FormHelperText>
+                </FormField>
+
+                <FormField id="course" label="Course" required error={errors.course}>
+                  <Input placeholder="e.g., B.Tech, MBA" {...text('course')} />
+                </FormField>
+
+                <FormField id="year" label="Year" required error={errors.year}>
+                  <ChakraSelect {...text('year')}>
+                    <option value="">--Select Year--</option>
+                    {COLLEGE_YEARS.map(y => (
+                      <option key={y.value} value={y.value}>{y.label}</option>
+                    ))}
+                  </ChakraSelect>
+                </FormField>
+
+                <FormField
+                  id="studentIdCard"
+                  label="Student ID Card"
+                  required
+                  error={errors.studentIdCard}
+                  hint="A clear photo of your student ID card. Our team verifies it before your QR is sent. JPG, PNG or WebP, max 5MB."
+                >
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    p={1}
+                    onChange={e => {
+                      pickIdCard(e.target.files[0]);
+                      e.target.value = '';
+                    }}
+                  />
+                  {idCard.previewUrl && (
+                    <Flex mt={3} align="center" gap={3}>
+                      <Image
+                        src={idCard.previewUrl}
+                        alt="ID card preview"
+                        maxH="120px"
+                        maxW="200px"
+                        objectFit="cover"
+                        borderRadius="md"
+                        borderWidth="1px"
+                      />
+                      <Button size="sm" colorScheme="red" variant="outline" onClick={clearIdCard}>
+                        Remove
+                      </Button>
+                    </Flex>
+                  )}
+                </FormField>
+              </>
+            )}
+
+            <Button
+              type="submit"
+              variant="festival"
+              size="lg"
+              py={7}
+              w="full"
+              isLoading={isPaying}
+              loadingText="Processing"
+              onMouseEnter={preloadRazorpay}
+              onFocus={preloadRazorpay}
+            >
+              {cta}
+            </Button>
+            <Text textAlign="center" fontSize="sm" color="text.muted">
+              Secure payment via Razorpay. Your QR pass is sent to your WhatsApp number.
+            </Text>
+          </Stack>
+        </form>
+      </CardBody>
+    </Card>
+  );
+}
